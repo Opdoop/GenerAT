@@ -13,6 +13,13 @@ conda activate GenerAT
 
 2. Download pre-trained model
    * Download `pytorch_model.bin` and `pytorch_model.generator.bin` from [huggingface](https://huggingface.co/microsoft/deberta-v3-large/tree/main) and put it in `./deberta-v3-large` . 
+3. Download glue data
+
+```
+python download_glue_data.py
+```
+
+
 
 ### Train
 
