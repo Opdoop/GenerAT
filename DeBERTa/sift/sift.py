@@ -21,7 +21,7 @@ class PerturbationLayer(torch.nn.Module):
         self.learning_rate = learning_rate
         self.init_perturbation = init_perturbation
         self.delta = None
-        self.LayerNorm = torch.nn.LayerNorm(hidden_size, 1e-7, elementwise_affine=False)
+        self.LayerNorm = torch.nn.LayerNorm(hidden_size, 1e-7).half()
         self.adversarial_mode = False
 
     def adversarial_(self, adversarial=True):
@@ -30,6 +30,7 @@ class PerturbationLayer(torch.nn.Module):
             self.delta = None
 
     def forward(self, input):
+        self.LayerNorm.to(input.device)
         if not self.adversarial_mode:
             self.input = self.LayerNorm(input)
             return self.input
@@ -41,19 +42,11 @@ class PerturbationLayer(torch.nn.Module):
     def update_delta(self, requires_grad=False):
         if not self.adversarial_mode:
             return True
-        if self.delta is None:
-            delta = torch.clamp(self.input.new(self.input.size()).normal_(0, self.init_perturbation).float(),
-                                -2 * self.init_perturbation, 2 * self.init_perturbation)
-        else:
-            grad = self.delta.grad
-            self.delta.grad = None
-            delta = self.delta
-            norm = grad.norm()
-            if torch.isnan(norm) or torch.isinf(norm):
-                return False
-            eps = self.learning_rate
-            with torch.no_grad():
-                delta = delta + eps * grad / (1e-6 + grad.abs().max(-1, keepdim=True)[0])
+        grad = self.LayerNorm.weight.grad
+        eps = self.learning_rate
+        with torch.no_grad():
+            delta = eps * grad / (eps + grad.abs().max(-1, keepdim=True)[0])
+        self.delta = delta.float().detach().requires_grad_(requires_grad)
         self.delta = delta.float().detach().requires_grad_(requires_grad)
         self.perturbated_input = (self.input.to(delta).detach() + self.delta).to(self.input)
         return True
