@@ -47,7 +47,6 @@ class PerturbationLayer(torch.nn.Module):
         with torch.no_grad():
             delta = eps * grad / (eps + grad.abs().max(-1, keepdim=True)[0])
         self.delta = delta.float().detach().requires_grad_(requires_grad)
-        self.delta = delta.float().detach().requires_grad_(requires_grad)
         self.perturbated_input = (self.input.to(delta).detach() + self.delta).to(self.input)
         return True
 
